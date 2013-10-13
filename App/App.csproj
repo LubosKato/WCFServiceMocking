@@ -53,8 +53,9 @@
     <Compile Include="Customer\CustomerDataAccess.cs" />
     <Compile Include="CustomerService.cs" />
     <Compile Include="Company\Interfaces\ICompanyRepository.cs" />
-    <Compile Include="Customer\InitialiseCustomer.cs" />
+    <Compile Include="Initialisation\InitialiseCustomer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Validation\CustomerValidation.cs" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

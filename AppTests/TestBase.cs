@@ -1,5 +1,6 @@
 ﻿using System;
 using App;
+using App.Initialisation;
 using NUnit.Framework;
 
 namespace AppTests

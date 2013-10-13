@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ServiceModel;
 using App;
+using App.Validation;
 using NUnit.Framework;
 using Rhino.Mocks;
 
@@ -12,6 +13,7 @@ namespace AppTests
         private CustomerService service;
         private ICompanyRepository companyRepository;
         private ICustomerDataAccessProvider provider;
+        private CustomerValidation customerValidation;
 
         private ServiceHost host;
         private MockRepository mockRepository;
@@ -23,7 +25,7 @@ namespace AppTests
             base.TestSetup();
             mockRepository = new MockRepository();
             serviceMock = mockRepository.PartialMock<PartialMockService>();
-
+            
             try
             {
                 host = new ServiceHost(serviceMock);
@@ -39,7 +41,7 @@ namespace AppTests
             }
 
             this.companyRepository = MockRepository.GenerateStrictMock<ICompanyRepository>();
-            this.provider = MockRepository.GenerateStrictMock<ICustomerDataAccessProvider>();
+            this.provider = MockRepository.GenerateMock<ICustomerDataAccessProvider>();
             this.service = new CustomerService(companyRepository, serviceMock, provider);
         }
 
@@ -49,8 +51,7 @@ namespace AppTests
             this.companyRepository.Stub(cr => cr.GetById(1)).Return(base.GoldCompany);
             this.provider.Stub(p => p.AddCustomer(base.ValidCustomer));
             this.service = new CustomerService(companyRepository, serviceMock, provider);
-            service.InitCustomer(base.ValidCustomer);
-            Assert.IsTrue(service.AddCustomer(1));
+            Assert.IsTrue(service.AddCustomer(ValidCustomer.FirstName, ValidCustomer.LastName, ValidCustomer.EmailAddress, ValidCustomer.DateOfBirth, 1));
             Assert.IsFalse(service.Customer.HasCreditLimit);
         }
 
@@ -63,8 +64,7 @@ namespace AppTests
             mockRepository.ReplayAll();
             this.companyRepository.Stub(cr => cr.GetById(1)).Return(base.SilverCompany);
             this.provider.Stub(p => p.AddCustomer(base.ValidCustomer));
-            service.InitCustomer(base.ValidCustomer);
-            Assert.IsTrue(this.service.AddCustomer(1));
+            Assert.IsTrue(service.AddCustomer(ValidCustomer.FirstName, ValidCustomer.LastName, ValidCustomer.EmailAddress, ValidCustomer.DateOfBirth, 1));
             Assert.IsTrue(this.service.Customer.HasCreditLimit);
             Assert.AreEqual(this.service.Customer.CreditLimit, 600);
         }
@@ -77,8 +77,7 @@ namespace AppTests
                             .Return(100);
             mockRepository.ReplayAll();
             this.companyRepository.Stub(cr => cr.GetById(1)).Return(base.SilverCompany);
-            this.service.InitCustomer(base.ValidCustomer);
-            Assert.IsFalse(this.service.AddCustomer(1));
+            Assert.IsFalse(service.AddCustomer(ValidCustomer.FirstName, ValidCustomer.LastName, ValidCustomer.EmailAddress, ValidCustomer.DateOfBirth, 1));
             Assert.IsTrue(this.service.Customer.HasCreditLimit);
             Assert.AreEqual(this.service.Customer.CreditLimit, 200);
         }
@@ -92,8 +91,7 @@ namespace AppTests
             mockRepository.ReplayAll();
             this.companyRepository.Stub(cr => cr.GetById(1)).Return(base.BrozneCompany);
             this.provider.Stub(p => p.AddCustomer(base.ValidCustomer));
-            this.service.InitCustomer(base.ValidCustomer);
-            Assert.IsTrue(this.service.AddCustomer(1));
+            Assert.IsTrue(service.AddCustomer(ValidCustomer.FirstName, ValidCustomer.LastName, ValidCustomer.EmailAddress, ValidCustomer.DateOfBirth, 1));
             Assert.IsTrue(this.service.Customer.HasCreditLimit);
             Assert.AreEqual(this.service.Customer.CreditLimit, 600);
         }
@@ -106,8 +104,7 @@ namespace AppTests
                             .Return(100);
             mockRepository.ReplayAll();
             this.companyRepository.Stub(cr => cr.GetById(1)).Return(base.BrozneCompany);
-            this.service.InitCustomer(base.ValidCustomer);
-            Assert.IsFalse(this.service.AddCustomer(1));
+            Assert.IsFalse(service.AddCustomer(ValidCustomer.FirstName, ValidCustomer.LastName, ValidCustomer.EmailAddress, ValidCustomer.DateOfBirth, 1));
             Assert.IsTrue(this.service.Customer.HasCreditLimit);
             Assert.AreEqual(this.service.Customer.CreditLimit, 100);
         }
@@ -116,54 +113,55 @@ namespace AppTests
         public void ValidateCustomerNotInitialisedCustomer()
         {
             //TODO : if there were messages implemented then check for error message
-            Assert.IsFalse(this.service.ValidateCustomer());
+            this.customerValidation = new CustomerValidation(null);
+            Assert.IsFalse(this.customerValidation.ValidateCustomer());
         }
 
         [Test]
         public void ValidateCustomerValid()
         {
-            this.service.InitCustomer(base.ValidCustomer);
-            Assert.IsTrue(this.service.ValidateCustomer());
+            this.customerValidation = new CustomerValidation(base.ValidCustomer);
+            Assert.IsTrue(this.customerValidation.ValidateCustomer());
         }
 
         [Test]
         public void ValidateCustomerInValidAge()
         {
-            this.service.InitCustomer(base.InvalidCustomerAge);
+            this.customerValidation = new CustomerValidation(base.InvalidCustomerAge);
             //TODO: check for validation message InvalidAge
-            Assert.IsFalse(this.service.ValidateCustomer());
+            Assert.IsFalse(this.customerValidation.ValidateCustomer());
         }
 
         [Test]
         public void ValidateCustomerMissingFirstName()
         {
-            this.service.InitCustomer(base.InvalidCustomerFirstName);
+            this.customerValidation = new CustomerValidation(base.InvalidCustomerFirstName);
             //TODO: check for validation message MissingFirstOrAndLastName
-            Assert.IsFalse(this.service.ValidateCustomer());
+            Assert.IsFalse(this.customerValidation.ValidateCustomer());
         }
 
         [Test]
         public void ValidateCustomerMissingLastName()
         {
-            this.service.InitCustomer(base.InvalidCustomerLastName);
+            this.customerValidation = new CustomerValidation(base.InvalidCustomerLastName);
             //TODO: check for validation message MissingFirstOrAndLastName
-            Assert.IsFalse(this.service.ValidateCustomer());
+            Assert.IsFalse(this.customerValidation.ValidateCustomer());
         }
 
         [Test]
         public void ValidateCustomerMissingFirstAndLastName()
         {
-            this.service.InitCustomer(base.InvalidCustomerFirstNameAndLastName);
+            this.customerValidation = new CustomerValidation(base.InvalidCustomerFirstNameAndLastName);
             //TODO: check for validation message MissingFirstOrAndLastName
-            Assert.IsFalse(this.service.ValidateCustomer());
+            Assert.IsFalse(this.customerValidation.ValidateCustomer());
         }
 
         [Test]
         public void ValidateCustomerInvalidEmail()
         {
-            this.service.InitCustomer(base.InvalidCustomerEmail);
+            this.customerValidation = new CustomerValidation(base.InvalidCustomerEmail);
             //TODO: check for validation message InvalidEmail
-            Assert.IsFalse(this.service.ValidateCustomer());
+            Assert.IsFalse(this.customerValidation.ValidateCustomer());
         }
     }
 }

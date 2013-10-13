@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+using App.Initialisation;
+using App.Validation;
 
 [assembly: InternalsVisibleTo("AppTests")]
 namespace App
@@ -15,58 +17,16 @@ namespace App
         {
             this.CustomerCreditService = customerCreditService;
             this.CompanyRepository = companyRepository;
-            this.Provider = provider;
+            this.Provider = provider;    
         }
 
-        public void InitCustomer(string firstName, string lastName, string email, DateTime dateOfBirth)
+        public bool AddCustomer(string firstName, string lastName, string email, DateTime dateOfBirth, int companyId)
         {
             this.Customer = InitialiseCustomer.InitCustomer(firstName, lastName, email, dateOfBirth);
-        }
 
-        internal void InitCustomer(Customer customer)
-        {
-            this.Customer = customer;
-        }
-
-        public bool ValidateCustomer()
-        {
-            if (Customer == null)
+            if (this.Customer != null)
             {
-                //TODO: add error message
-                return false;
-            }
-
-            if (string.IsNullOrEmpty(Customer.FirstName) || string.IsNullOrEmpty(Customer.LastName))
-            {
-                //TODO: add custom validation  message MissingFirstOrAndLastName
-                return false;
-            }
-
-            if (!Customer.EmailAddress.Contains("@") && !Customer.EmailAddress.Contains("."))
-            {
-                //TODO: add custom validation  message InvalidEmailAddress
-                return false;
-            }
-
-            DateTime now = DateTime.Now;
-            int age = now.Year - Customer.DateOfBirth.Year;
-            if (now.Month < Customer.DateOfBirth.Month ||
-                (now.Month == Customer.DateOfBirth.Month && now.Day < Customer.DateOfBirth.Day)) age--;
-
-            if (age <= 21)
-            {
-                //TODO: add custom validation message InvalidAge
-                return false;
-            }
-
-            return true;
-        }
-
-        public bool AddCustomer(int companyId)
-        {
-            if (Customer != null)
-            {
-                Customer.Company = CompanyRepository.GetById(companyId);
+                this.Customer.Company = this.CompanyRepository.GetById(companyId);
             }
             else
             {
@@ -74,38 +34,43 @@ namespace App
                 return false;
             }
 
-            switch (Customer.Company.Classification)
+            if (!new CustomerValidation(this.Customer).ValidateCustomer())
+            {
+                return false;
+            }
+
+            switch (this.Customer.Company.Classification)
             {
                 case Classification.Gold:
-                    Customer.HasCreditLimit = false;
+                    this.Customer.HasCreditLimit = false;
                     break;
                 case Classification.Silver:
-                    Customer.HasCreditLimit = true;
-                    using (CustomerCreditService as IDisposable)
+                    this.Customer.HasCreditLimit = true;
+                    using (this.CustomerCreditService as IDisposable)
                     {
-                        int creditLimit = CustomerCreditService.GetCreditLimit(Customer.FirstName, Customer.LastName,
-                                                                               Customer.DateOfBirth);
-                        Customer.CreditLimit = creditLimit * 2;
+                        int creditLimit = this.CustomerCreditService.GetCreditLimit(this.Customer.FirstName, this.Customer.LastName,
+                                                                               this.Customer.DateOfBirth);
+                        this.Customer.CreditLimit = creditLimit * 2;
                     }
                     break;
                 default:
-                    Customer.HasCreditLimit = true;
-                    using (CustomerCreditService as IDisposable)
+                    this.Customer.HasCreditLimit = true;
+                    using (this.CustomerCreditService as IDisposable)
                     {
-                        Customer.CreditLimit = CustomerCreditService.GetCreditLimit(Customer.FirstName, Customer.LastName,
-                                                                               Customer.DateOfBirth);
+                        this.Customer.CreditLimit = this.CustomerCreditService.GetCreditLimit(this.Customer.FirstName, this.Customer.LastName,
+                                                                               this.Customer.DateOfBirth);
                     }
                     break;
             }
 
-            if (Customer.HasCreditLimit && Customer.CreditLimit < 500)
+            if (this.Customer.HasCreditLimit && this.Customer.CreditLimit < 500)
             {
                 //TODO: add warning message for customer
                 return false;
             }
 
             //TODO: add information message for customer 
-            Provider.AddCustomer(Customer);
+            this.Provider.AddCustomer(this.Customer);
 
             return true;
         }
